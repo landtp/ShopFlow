@@ -1,0 +1,25 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/ApiGateway/ApiGateway.csproj" />
+    <Project Path="src/BuildingBlocks/BuildingBlocks.csproj" />
+  </Folder>
+  <Folder Name="/src/Services/" />
+  <Folder Name="/src/Services/Identity/">
+    <Project Path="src/Services/Identity/IdentityService.API/IdentityService.API.csproj" />
+    <Project Path="src/Services/Identity/IdentityService.Application/IdentityService.Application.csproj" />
+    <Project Path="src/Services/Identity/IdentityService.Domain/IdentityService.Domain.csproj" />
+    <Project Path="src/Services/Identity/IdentityService.Infrastructure/IdentityService.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/src/Services/Order/">
+    <Project Path="src/Services/Order/OrderService.API/OrderService.API.csproj" />
+    <Project Path="src/Services/Order/OrderService.Application/OrderService.Application.csproj" />
+    <Project Path="src/Services/Order/OrderService.Domain/OrderService.Domain.csproj" />
+    <Project Path="src/Services/Order/OrderService.Infrastructure/OrderService.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/src/Services/Payment/">
+    <Project Path="src/Services/Payment/PaymentService.API/PaymentService.API.csproj" />
+    <Project Path="src/Services/Payment/PaymentService.Application/PaymentService.Application.csproj" />
+    <Project Path="src/Services/Payment/PaymentService.Domain/PaymentService.Domain.csproj" />
+    <Project Path="src/Services/Payment/PaymentService.Infrastructure/PaymentService.Infrastructure.csproj" />
+  </Folder>
+</Solution>
