@@ -48,6 +48,10 @@ public sealed class OrderDbContext(
         foreach (var domainEvent in domainEvents)
             await publisher.Publish(domainEvent, ct);
 
+        // ✅ Lưu lần 2 — persist OutboxMessages vào DB
+        if (ChangeTracker.HasChanges())
+            await base.SaveChangesAsync(ct);
+
         return result;
     }
 }

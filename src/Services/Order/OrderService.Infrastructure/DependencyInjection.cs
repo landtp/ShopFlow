@@ -52,6 +52,21 @@ public static class DependencyInjection
         // Kafka producer
         services.AddKafkaProducer(configuration);
 
+        // Service Bus (tạm comment — chưa có Azure account)
+        // var sbConnection = configuration
+        //     .GetConnectionString("ServiceBus");
+        //
+        // if (!string.IsNullOrEmpty(sbConnection))
+        // {
+        //     services.AddSingleton(
+        //         new ServiceBusClient(sbConnection));
+        //
+        //     services.AddSingleton<ServiceBusEventBus>();
+        //
+        //     services.AddHostedService
+        //         PaymentResultServiceBusConsumer>();
+        // }
+
         return services;
     }
 }

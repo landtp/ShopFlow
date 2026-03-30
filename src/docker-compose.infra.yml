@@ -15,12 +15,7 @@ services:
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT
       KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
-      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
-      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
-      KAFKA_LOG_DIRS: /var/lib/kafka/data
-    volumes:
-      - kafka-data:/var/lib/kafka/data
     healthcheck:
       test: ["CMD", "/opt/kafka/bin/kafka-broker-api-versions.sh", "--bootstrap-server", "localhost:9092"]
       interval: 10s
@@ -39,7 +34,6 @@ services:
       kafka:
         condition: service_healthy
 
-  # ← Thêm Redis
   redis:
     image: redis:7-alpine
     container_name: shopflow-redis
@@ -54,7 +48,6 @@ services:
       timeout: 5s
       retries: 3
 
-  # ← Redis UI để xem cache
   redis-commander:
     image: rediscommander/redis-commander:latest
     container_name: shopflow-redis-ui
@@ -65,6 +58,18 @@ services:
     depends_on:
       - redis
 
+  servicebus-emulator:
+    image: mcr.microsoft.com/azure-messaging/servicebus-emulator:latest
+    container_name: shopflow-servicebus
+    ports:
+      - "5672:5672"
+    environment:
+      ACCEPT_EULA: "Y"
+      SQL_SERVER: 192.168.0.109
+      MSSQL_SA_PASSWORD: "ShopFlow@123"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
 volumes:
-  kafka-data:
   redis-data:
+  kafka-data:

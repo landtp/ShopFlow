@@ -88,7 +88,13 @@ public sealed class OrderCreatedConsumer(
 
         using var scope = scopeFactory.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<PaymentDbContext>();
-        var eventBus = scope.ServiceProvider.GetRequiredService<IEventBus>();
+
+        // kafkaEventBus 
+        var kafkaEventBus = scope.ServiceProvider.GetRequiredService<IEventBus>();
+
+        // Service Bus (nullable — có thể chưa config)
+        //var serviceBusEventBus = scope.ServiceProvider
+        //    .GetService<ServiceBusEventBus>();
 
         // Idempotency check — ngoài transaction
         var alreadyProcessed = await db.ProcessedMessages
@@ -122,21 +128,33 @@ public sealed class OrderCreatedConsumer(
                 if (isSuccess)
                 {
                     payment.MarkSuccess();
-                    await eventBus.PublishAsync(
-                        new PaymentCompletedIntegrationEvent(
-                            payment.Id,
-                            integrationEvent.OrderId,
-                            integrationEvent.CustomerId,
-                            integrationEvent.TotalAmount), ct);
+                 
+
+                    var completedEvent = new PaymentCompletedIntegrationEvent(
+                                            payment.Id, 
+                                            integrationEvent.OrderId,
+                                            integrationEvent.CustomerId, 
+                                            integrationEvent.TotalAmount);
+
+                    // Publish lên Kafka
+                    await kafkaEventBus.PublishAsync(completedEvent, ct);
+
+                    // Publish lên Service Bus (nếu có config)
+                    //if (serviceBusEventBus is not null)
+                    //    await serviceBusEventBus.PublishAsync(completedEvent, ct);
                 }
                 else
                 {
                     payment.MarkFailed("Insufficient funds");
-                    await eventBus.PublishAsync(
-                        new PaymentFailedIntegrationEvent(
-                            payment.Id,
-                            integrationEvent.OrderId,
-                            "Insufficient funds"), ct);
+                    var failedEvent = new PaymentFailedIntegrationEvent(
+                    payment.Id, integrationEvent.OrderId, "Insufficient funds");
+
+                    // Publish lên Kafka
+                    await kafkaEventBus.PublishAsync(failedEvent, ct);
+
+                    // Publish lên Service Bus (nếu có config)
+                    //if (serviceBusEventBus is not null)
+                    //    await serviceBusEventBus.PublishAsync(failedEvent, ct);
                 }
 
                 await db.Payments.AddAsync(payment, ct);
@@ -152,8 +170,11 @@ public sealed class OrderCreatedConsumer(
                 await transaction.CommitAsync(ct);
 
                 logger.LogInformation(
-                    "Payment {Status} for Order {OrderId}",
-                    payment.Status, integrationEvent.OrderId);
+                "Payment {Status} for Order {OrderId} — " ,
+                payment.Status,
+                integrationEvent.OrderId);
+                //serviceBusEventBus is not null
+                //    ? " + Service Bus" : "");
             }
             catch (Exception ex)
             {
