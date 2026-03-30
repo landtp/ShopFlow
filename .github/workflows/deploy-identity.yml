@@ -1,0 +1,57 @@
+# .github/workflows/deploy-identity.yml
+name: Deploy Identity Service
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'src/Services/Identity/**'
+      - 'src/BuildingBlocks/**'
+      - '.github/workflows/deploy-identity.yml'
+
+env:
+  IMAGE_NAME: identity-service
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Login to Azure
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Login to ACR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ secrets.ACR_LOGIN_SERVER }}
+          username: ${{ secrets.ACR_USERNAME }}
+          password: ${{ secrets.ACR_PASSWORD }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: src/Services/Identity/IdentityService.API/Dockerfile
+          push: true
+          tags: |
+            ${{ secrets.ACR_LOGIN_SERVER }}/${{ env.IMAGE_NAME }}:latest
+            ${{ secrets.ACR_LOGIN_SERVER }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+
+      - name: Deploy to Azure Container Apps
+        uses: azure/container-apps-deploy-action@v1
+        with:
+          resourceGroup: ${{ secrets.AZURE_RESOURCE_GROUP }}
+          containerAppName: identity-service
+          imageToDeploy: ${{ secrets.ACR_LOGIN_SERVER }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+          environmentVariables: |
+            ASPNETCORE_ENVIRONMENT=Production
+            ConnectionStrings__IdentityDb=${{ secrets.SQL_CONNECTION_STRING }}
+            Jwt__SecretKey=${{ secrets.JWT_SECRET_KEY }}
+            Jwt__Issuer=ShopFlow.Identity
+            Jwt__Audience=ShopFlow.API
+            Jwt__ExpiryMinutes=15
+            Redis__ConnectionString=${{ secrets.REDIS_CONNECTION_STRING }}

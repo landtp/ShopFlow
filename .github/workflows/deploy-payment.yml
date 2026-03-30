@@ -1,0 +1,53 @@
+# .github/workflows/deploy-payment.yml
+name: Deploy Payment Service
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'src/Services/Payment/**'
+      - 'src/BuildingBlocks/**'
+      - '.github/workflows/deploy-payment.yml'
+
+env:
+  IMAGE_NAME: payment-service
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Login to Azure
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Login to ACR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ secrets.ACR_LOGIN_SERVER }}
+          username: ${{ secrets.ACR_USERNAME }}
+          password: ${{ secrets.ACR_PASSWORD }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: src/Services/Payment/PaymentService.API/Dockerfile
+          push: true
+          tags: |
+            ${{ secrets.ACR_LOGIN_SERVER }}/${{ env.IMAGE_NAME }}:latest
+            ${{ secrets.ACR_LOGIN_SERVER }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+
+      - name: Deploy to Azure Container Apps
+        uses: azure/container-apps-deploy-action@v1
+        with:
+          resourceGroup: ${{ secrets.AZURE_RESOURCE_GROUP }}
+          containerAppName: payment-service
+          imageToDeploy: ${{ secrets.ACR_LOGIN_SERVER }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+          environmentVariables: |
+            ASPNETCORE_ENVIRONMENT=Production
+            ConnectionStrings__PaymentDb=${{ secrets.SQL_CONNECTION_STRING }}
+            Kafka__BootstrapServers=${{ secrets.KAFKA_BOOTSTRAP_SERVERS }}

@@ -1,0 +1,54 @@
+# .github/workflows/deploy-order.yml
+name: Deploy Order Service
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'src/Services/Order/**'
+      - 'src/BuildingBlocks/**'
+      - '.github/workflows/deploy-order.yml'
+
+env:
+  IMAGE_NAME: order-service
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Login to Azure
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Login to ACR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ secrets.ACR_LOGIN_SERVER }}
+          username: ${{ secrets.ACR_USERNAME }}
+          password: ${{ secrets.ACR_PASSWORD }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: src/Services/Order/OrderService.API/Dockerfile
+          push: true
+          tags: |
+            ${{ secrets.ACR_LOGIN_SERVER }}/${{ env.IMAGE_NAME }}:latest
+            ${{ secrets.ACR_LOGIN_SERVER }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+
+      - name: Deploy to Azure Container Apps
+        uses: azure/container-apps-deploy-action@v1
+        with:
+          resourceGroup: ${{ secrets.AZURE_RESOURCE_GROUP }}
+          containerAppName: order-service
+          imageToDeploy: ${{ secrets.ACR_LOGIN_SERVER }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+          environmentVariables: |
+            ASPNETCORE_ENVIRONMENT=Production
+            ConnectionStrings__OrderDb=${{ secrets.SQL_CONNECTION_STRING }}
+            Kafka__BootstrapServers=${{ secrets.KAFKA_BOOTSTRAP_SERVERS }}
+            Redis__ConnectionString=${{ secrets.REDIS_CONNECTION_STRING }}
